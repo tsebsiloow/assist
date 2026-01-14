@@ -1,4 +1,5 @@
 # javascriptを使用するときにその手助けをします。
+headタグ内で読み込むことが望ましいです。
 ## JS-assist
 ### herokuやrenderで利用すると外部サイトと通信し、読み込みをより確実なものにします。
 jsdelivr
