@@ -1,9 +1,9 @@
-name: run-js-loop
+name: run-assist-scripts
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # 6時間ごと再起動
+    - cron: "0 */6 * * *"
 
 jobs:
   run:
@@ -11,48 +11,36 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: run loop
+      - name: setup
         run: |
-          echo "start"
+          npm init -y >/dev/null 2>&1
+          npm install puppeteer
 
-          while true
-          do
-            echo "loop $(date)"
+      - name: create runner
+        run: |
+          cat <<'JS' > run.js
+          const puppeteer = require("puppeteer");
 
-            node <<'EOF'
-            const https = require("https");
-            const vm = require("vm");
+          (async () => {
+            const browser = await puppeteer.launch({
+              args: ["--no-sandbox", "--disable-setuid-sandbox"]
+            });
 
-            const urls = [
-              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-assist.js",
-              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-static.js",
-              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/backend-assist.js"
-            ];
+            const page = await browser.newPage();
 
-            function run(url){
-              return new Promise(res=>{
-                https.get(url + "?t=" + Date.now(), r=>{
-                  let data="";
-                  r.on("data",c=>data+=c);
-                  r.on("end",()=>{
-                    try{
-                      vm.runInThisContext(data);
-                      console.log("executed:",url);
-                    }catch(e){
-                      console.log("error:",url);
-                    }
-                    res();
-                  });
-                }).on("error",()=>res());
-              });
+            while(true){
+              console.log("run", new Date().toISOString());
+
+              await page.goto("about:blank");
+
+              await page.addScriptTag({url:"https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-assist.js"});
+              await page.addScriptTag({url:"https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-static.js"});
+              await page.addScriptTag({url:"https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/backend-assist.js"});
+
+              await new Promise(r=>setTimeout(r,10000));
             }
+          })();
+          JS
 
-            (async()=>{
-              for(const u of urls){
-                await run(u);
-              }
-            })();
-            EOF
-
-            sleep 10
-          done
+      - name: run loop
+        run: node run.js
