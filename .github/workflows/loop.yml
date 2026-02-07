@@ -1,0 +1,34 @@
+name: js-ping
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # 6時間ごとに自動再起動
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 10秒ループ
+        run: |
+          URLS=(
+            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-assist.js"
+            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-static.js"
+            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/backend-assist.js"
+          )
+
+          echo "start"
+
+          while true
+          do
+            echo "ping $(date)"
+
+            for u in "${URLS[@]}"
+            do
+              curl -s "$u?t=$(date +%s)" > /dev/null
+            done
+
+            sleep 10
+          done
